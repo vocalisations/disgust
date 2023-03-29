@@ -21,7 +21,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('video_path', type=Path, help='Path to the video file.')
 args = parser.parse_args()
 video_path = args.video_path
-print(video_path)
+
 
 MODEL_CKPT = "MCG-NJU/videomae-base-finetuned-kinetics"
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -115,10 +115,9 @@ def infer(video_file):
         logits = outputs.logits
     softmax_scores = torch.nn.functional.softmax(logits, dim=-1).squeeze(0)
     confidences = [(LABELS[i], float(softmax_scores[i])) for i in range(len(LABELS))]
-    return confidences
+    return confidences, logits
 
-confidences = infer(str(video_path))
+confidences, _ = infer(str(video_path))
 sorted_confidences = pd.DataFrame(sorted(confidences, key=lambda x: x[1], reverse=True), columns=('label', 'confidence'))
 
 print(sorted_confidences)
-
