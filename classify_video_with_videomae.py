@@ -17,30 +17,12 @@ from torchvision.transforms import (
 )
 from transformers import VideoMAEFeatureExtractor, VideoMAEForVideoClassification
 
-parser = argparse.ArgumentParser()
-parser.add_argument('video_path', type=Path, help='Path to the video file.')
-args = parser.parse_args()
-video_path = args.video_path
 
+def parse_arguments():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('video_path', type=Path, help='Path to the video file.')
+    return parser.parse_args()
 
-MODEL_CKPT = "MCG-NJU/videomae-base-finetuned-kinetics"
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-MODEL = VideoMAEForVideoClassification.from_pretrained(MODEL_CKPT).to(DEVICE)
-PROCESSOR = VideoMAEFeatureExtractor.from_pretrained(MODEL_CKPT)
-
-RESIZE_TO = PROCESSOR.size["shortest_edge"]
-NUM_FRAMES_TO_SAMPLE = MODEL.config.num_frames
-IMAGE_STATS = {"image_mean": [0.485, 0.456, 0.406], "image_std": [0.229, 0.224, 0.225]}
-VAL_TRANSFORMS = Compose(
-    [
-        UniformTemporalSubsample(NUM_FRAMES_TO_SAMPLE),
-        Lambda(lambda x: x / 255.0),
-        Normalize(IMAGE_STATS["image_mean"], IMAGE_STATS["image_std"]),
-        Resize((RESIZE_TO, RESIZE_TO)),
-    ]
-)
-LABELS = list(MODEL.config.label2id.keys())
 
 def parse_video(video_file):
     """A utility to parse the input videos.
@@ -82,7 +64,7 @@ def parse_video(video_file):
     return frames
 
 
-def preprocess_video(frames: list):
+def preprocess_video(frames: list, device: str, model, model_weights_tag):
     """Utility to apply preprocessing transformations to a video tensor."""
     # Each frame in the `frames` list has the shape: (height, width, num_channels).
     # Collated together the `frames` has the the shape: (num_frames, height, width, num_channels).
@@ -92,32 +74,60 @@ def preprocess_video(frames: list):
     # preprocessing chain, we permute the shape to (num_frames, num_channels, height, width)
     # to make it compatible with the model. Finally, we add a batch dimension so that our video
     # classification model can operate on it.
+    processor = VideoMAEFeatureExtractor.from_pretrained(model_weights_tag)
+
+    resize_to = processor.size["shortest_edge"]
+    num_frames_to_sample = model.config.num_frames
+    image_stats = {"image_mean": [0.485, 0.456, 0.406], "image_std": [0.229, 0.224, 0.225]}
+    val_transforms = Compose(
+        [
+            UniformTemporalSubsample(num_frames_to_sample),
+            Lambda(lambda x: x / 255.0),
+            Normalize(image_stats["image_mean"], image_stats["image_std"]),
+            Resize((resize_to, resize_to)),
+        ]
+    )
+
     video_tensor = torch.tensor(np.array(frames).astype(frames[0].dtype))
     video_tensor = video_tensor.permute(
         3, 0, 1, 2
     )  # (num_channels, num_frames, height, width)
-    video_tensor_pp = VAL_TRANSFORMS(video_tensor)
+    video_tensor_pp = val_transforms(video_tensor)
     video_tensor_pp = video_tensor_pp.permute(
         1, 0, 2, 3
     )  # (num_frames, num_channels, height, width)
     video_tensor_pp = video_tensor_pp.unsqueeze(0)
-    return video_tensor_pp.to(DEVICE)
+    return video_tensor_pp.to(device)
 
 
 def infer(video_file):
+    model_ckpt = "MCG-NJU/videomae-base-finetuned-kinetics"
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = VideoMAEForVideoClassification.from_pretrained(model_ckpt).to(device)
+    labels = list(model.config.label2id.keys())
+
     frames = parse_video(video_file)
-    video_tensor = preprocess_video(frames)
+    video_tensor = preprocess_video(frames, device, model, model_ckpt)
     inputs = {"pixel_values": video_tensor}
 
     # forward pass
     with torch.no_grad():
-        outputs = MODEL(**inputs)
+        outputs = model(**inputs)
         logits = outputs.logits
     softmax_scores = torch.nn.functional.softmax(logits, dim=-1).squeeze(0)
-    confidences = [(LABELS[i], float(softmax_scores[i])) for i in range(len(LABELS))]
+    confidences = [(labels[i], float(softmax_scores[i])) for i in range(len(labels))]
     return confidences, logits
 
-confidences, _ = infer(str(video_path))
-sorted_confidences = pd.DataFrame(sorted(confidences, key=lambda x: x[1], reverse=True), columns=('label', 'confidence'))
 
-print(sorted_confidences)
+def main():
+    args = parse_arguments()
+    video_path = args.video_path
+    confidences, _ = infer(str(video_path))
+    sorted_confidences = pd.DataFrame(sorted(confidences, key=lambda x: x[1], reverse=True),
+                                      columns=('label', 'confidence'))
+
+    print(sorted_confidences)
+
+
+if __name__ == '__main__':
+    main()
