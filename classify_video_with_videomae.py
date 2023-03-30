@@ -100,7 +100,7 @@ def preprocess_video(frames: list, device: str, model, model_weights_tag):
     return video_tensor_pp.to(device)
 
 
-def infer(video_file):
+def infer(video_file:str):
     model_ckpt = "MCG-NJU/videomae-base-finetuned-kinetics"
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = VideoMAEForVideoClassification.from_pretrained(model_ckpt).to(device)
