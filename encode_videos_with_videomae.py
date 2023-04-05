@@ -1,7 +1,7 @@
 import argparse
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 
 import numpy as np
 import pandas as pd
@@ -19,7 +19,7 @@ def parse_arguments():
 
 
 def read_video_ids(meta_csv_path):
-    return pd.read_csv(meta_csv_path)['VideoID']
+    return pd.read_csv(meta_csv_path)['VideoID'].astype(str)
 
 
 def get_video_path(video_dir: Path, video_id: str):
@@ -68,10 +68,10 @@ def save_encode(videos_to_encode, videos, output_csv):
     report_failures(failed_videos)
 
 
-def report_failures(failed_videos):
+def report_failures(failed_videos: List[Video]):
     if failed_videos:
         print(f'There were errors during loading or inference of the following {len(failed_videos)} video paths:')
-        print(f'{",".join([video.path for video in failed_videos])}')
+        print(f'{",".join([str(video.path) for video in failed_videos])}')
         for video in failed_videos:
             print(f'For video {video.id} the following error occured: {video.error}')
 
