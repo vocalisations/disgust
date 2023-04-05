@@ -36,6 +36,10 @@ class Video:
     features: Optional[np.array] = None
     error: Optional[str] = None
 
+    def has_features(self) -> bool:
+        print(self.features, type(self.features))
+        return isinstance(self.features, np.ndarray)
+
 
 def main():
     args = parse_arguments()
@@ -50,7 +54,7 @@ def main():
     check_video_files(videos)
     copy_existing_features(videos, output_csv)
     videos_with_paths = [v for v in videos if v.path is not None]
-    videos_to_encode = [v for v in videos_with_paths if v.features is None]
+    videos_to_encode = [v for v in videos_with_paths if not v.has_features()]
 
     save_encode(videos_to_encode, videos, output_csv)
 
@@ -60,7 +64,7 @@ def save_encode(videos_to_encode, videos, output_csv):
     for video in tqdm(videos_to_encode):
         try:
             _, logits = infer(str(video.path))
-            video.features = logits
+            video.features = np.array(logits)
             save_features(videos, output_csv)
         except Exception as e:
             video.error = str(e)
@@ -77,13 +81,13 @@ def report_failures(failed_videos: List[Video]):
 
 
 def copy_existing_features(videos, output_csv):
-    existing_videos = [Video(t['VideoID'], features=t['features']) for _index, t in
+    existing_videos = [Video(str(t['VideoID']), features=t['features']) for _index, t in
                        pd.read_csv(output_csv).iterrows()] if output_csv.exists() else {}
 
     recovered_videos = []
     for video in videos:
         existing_video = get_matching_video(existing_videos, video.id)
-        if existing_video is not None and existing_video.features is not None:
+        if existing_video is not None and existing_video.has_features():
             video.features = existing_video.features
             recovered_videos.append(video)
 
@@ -94,7 +98,7 @@ def copy_existing_features(videos, output_csv):
 
 
 def get_matching_video(existing_videos, video_id):
-    return next((existing_video for existing_video in existing_videos if existing_video.id is video_id), None)
+    return next((existing_video for existing_video in existing_videos if existing_video.id == video_id), None)
 
 
 def check_video_files(videos):
