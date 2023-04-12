@@ -1,7 +1,9 @@
 import argparse
+import json
 from dataclasses import dataclass
+from json import JSONDecodeError
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 
 import numpy as np
 import pandas as pd
@@ -11,11 +13,10 @@ import pandas as pd
 class Video:
     id: str
     path: Optional[Path] = None
-    features: Optional[np.array] = None
+    features: Optional[np.ndarray] = None
     error: Optional[str] = None
 
     def has_features(self) -> bool:
-        print(self.features, type(self.features))
         return isinstance(self.features, np.ndarray)
 
 
@@ -26,7 +27,7 @@ class PathConfig:
     features_csv: Path
 
 
-def get_path_config_from_args():
+def get_path_config_from_args() -> PathConfig:
     args = parse_arguments()
     features_csv = args.features_csv if args.features_csv else \
         args.meta_csv.parent / (args.meta_csv.stem + '.videomae_logits.csv')
@@ -48,19 +49,35 @@ def parse_arguments():
     return parser.parse_args()
 
 
-def read_video_ids(meta_csv_path):
+def read_video_ids(meta_csv_path: Path):
     return pd.read_csv(meta_csv_path)['VideoID'].astype(str)
 
 
-def get_video_path(video_dir: Path, video_id: str):
+def get_video_path(video_dir: Path, video_id: str) -> Optional[Video]:
     matches = [f for f in video_dir.iterdir() if f.stem == video_id]
     if not matches:
         return None
     return matches[0]
 
 
-def copy_existing_features(videos, features_csv):
-    existing_videos = [Video(str(t['VideoID']), features=t['features']) for _index, t in
+def read_feature_set(text: str):
+    if text == 'nan' or isinstance(text, float):
+        return None
+
+    obj = None
+    try:
+        obj = np.array(json.loads(text))
+    except (JSONDecodeError, TypeError) as e:
+        print('Error while decoding the following json features:', text, 'with type', type(text))
+    if not isinstance(obj, np.ndarray):
+        return None
+    if np.isnan(obj).any():
+        return None
+    return obj
+
+
+def copy_existing_features(videos: List[Video], features_csv: Path):
+    existing_videos = [Video(str(t['VideoID']), features=read_feature_set(t['features'])) for _index, t in
                        pd.read_csv(features_csv).iterrows()] if features_csv.exists() else {}
 
     recovered_videos = []
@@ -71,10 +88,10 @@ def copy_existing_features(videos, features_csv):
             recovered_videos.append(video)
 
     if recovered_videos:
-        print(f'Recovered previously computed features for {len(recovered_videos)} videos.')
+        print(f'Loaded previously computed features for {len(recovered_videos)} videos.')
     else:
-        print(f'Found no previously computed features so we will start from 0 and compute all videos.')
+        print(f'Found no previously computed features.')
 
 
-def get_matching_video(existing_videos, video_id):
+def get_matching_video(existing_videos: List[Video], video_id: str):
     return next((existing_video for existing_video in existing_videos if existing_video.id == video_id), None)

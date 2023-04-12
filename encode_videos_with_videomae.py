@@ -1,3 +1,6 @@
+import json
+import pickle
+from pathlib import Path
 from typing import List
 
 import numpy as np
@@ -12,9 +15,9 @@ def main():
     config = get_path_config_from_args()
     videos = load_videos(config)
 
-    check_video_files(videos)
     videos_with_paths = [v for v in videos if v.path is not None]
     videos_to_encode = [v for v in videos_with_paths if not v.has_features()]
+    check_video_files(videos_to_encode)
     save_encode(videos_to_encode, videos, config.features_csv)
 
 
@@ -23,16 +26,23 @@ def save_encode(videos_to_encode, videos, features_csv):
     for video in tqdm(videos_to_encode):
         try:
             _, logits = infer(str(video.path))
-            video.features = np.array(logits)
-            save_features(videos, features_csv)
         except Exception as e:
             video.error = str(e)
             failed_videos.append(video)
+            continue
+
+        video.features = np.array(logits[0])  # Remove batch dimension
+        save_features(videos, features_csv)
+
     report_failures(failed_videos)
 
 
-def save_features(videos, features_csv):
-    output = pd.DataFrame([(video.id, video.features) for video in videos], columns=('VideoID', 'features'))
+def save_features(videos: List[Video], features_csv: Path):
+    def serialize_features(features):
+        return json.dumps(features.tolist() if isinstance(features, np.ndarray) else None)
+
+    output = pd.DataFrame([(video.id, serialize_features(video.features)) for video in videos],
+                          columns=('VideoID', 'features'))
     output.to_csv(features_csv)
 
 
@@ -45,11 +55,15 @@ def report_failures(failed_videos: List[Video]):
 
 
 def check_video_files(videos):
+    if not videos:
+        return
+
     videos_without_files = [v for v in videos if v.path is None]
     videos_with_files = [v for v in videos if v.path is not None]
     formatted_id_list = ",".join([str(v.id) for v in videos_without_files])
-    print(
-        f'Found {len(videos_with_files)} video files from all {len(videos)} videos in csv. Videos files for the following {len(videos_without_files)} videos are missing:\n{formatted_id_list}')
+    print(f'Found {len(videos_with_files)} video files from all {len(videos)} videos to encode.')
+    if videos_without_files:
+        print(f'Videos files for the following {len(videos_without_files)} videos are missing:\n{formatted_id_list}')
 
 
 if __name__ == '__main__':
