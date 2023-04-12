@@ -14,7 +14,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('meta_csv', type=Path, help='Path to the csv file containing a column called VideoID.')
     parser.add_argument('video_dir', type=Path, help='Path to folder containing the video files.')
-    parser.add_argument('--output_csv', type=Path, help='Path to the csv file containing a column called VideoID.')
+    parser.add_argument('--features_csv', type=Path, help='Path to the csv file containing a column called VideoID.')
     return parser.parse_args()
 
 
@@ -46,26 +46,26 @@ def main():
     meta_csv_path = args.meta_csv
     video_dir = args.video_dir
 
-    output_csv = args.output_csv if args.output_csv else \
+    features_csv = args.features_csv if args.features_csv else \
         meta_csv_path.parent / (meta_csv_path.stem + '.videomae_logits.csv')
 
     videos = [Video(video_id, path=get_video_path(video_dir, video_id)) for video_id in read_video_ids(meta_csv_path)]
 
     check_video_files(videos)
-    copy_existing_features(videos, output_csv)
+    copy_existing_features(videos, features_csv)
     videos_with_paths = [v for v in videos if v.path is not None]
     videos_to_encode = [v for v in videos_with_paths if not v.has_features()]
 
-    save_encode(videos_to_encode, videos, output_csv)
+    save_encode(videos_to_encode, videos, features_csv)
 
 
-def save_encode(videos_to_encode, videos, output_csv):
+def save_encode(videos_to_encode, videos, features_csv):
     failed_videos = []
     for video in tqdm(videos_to_encode):
         try:
             _, logits = infer(str(video.path))
             video.features = np.array(logits)
-            save_features(videos, output_csv)
+            save_features(videos, features_csv)
         except Exception as e:
             video.error = str(e)
             failed_videos.append(video)
@@ -80,9 +80,9 @@ def report_failures(failed_videos: List[Video]):
             print(f'For video {video.id} the following error occured: {video.error}')
 
 
-def copy_existing_features(videos, output_csv):
+def copy_existing_features(videos, features_csv):
     existing_videos = [Video(str(t['VideoID']), features=t['features']) for _index, t in
-                       pd.read_csv(output_csv).iterrows()] if output_csv.exists() else {}
+                       pd.read_csv(features_csv).iterrows()] if features_csv.exists() else {}
 
     recovered_videos = []
     for video in videos:
@@ -109,9 +109,9 @@ def check_video_files(videos):
         f'Found {len(videos_with_files)} video files from all {len(videos)} videos in csv. Videos files for the following {len(videos_without_files)} videos are missing:\n{formatted_id_list}')
 
 
-def save_features(videos, output_csv):
+def save_features(videos, features_csv):
     output = pd.DataFrame([(video.id, video.features) for video in videos], columns=('VideoID', 'features'))
-    output.to_csv(output_csv)
+    output.to_csv(features_csv)
 
 
 if __name__ == '__main__':
