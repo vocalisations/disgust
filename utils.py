@@ -19,14 +19,25 @@ class Video:
         return isinstance(self.features, np.ndarray)
 
 
-def load_videos(args):
-    meta_csv_path = args.meta_csv
-    video_dir = args.video_dir
+@dataclass
+class PathConfig:
+    meta_csv_path: Path
+    video_dir: Path
+    features_csv: Path
+
+
+def get_path_config_from_args():
+    args = parse_arguments()
     features_csv = args.features_csv if args.features_csv else \
-        meta_csv_path.parent / (meta_csv_path.stem + '.videomae_logits.csv')
-    videos = [Video(video_id, path=get_video_path(video_dir, video_id)) for video_id in read_video_ids(meta_csv_path)]
-    copy_existing_features(videos, features_csv)
-    return videos, features_csv
+        args.meta_csv.parent / (args.meta_csv.stem + '.videomae_logits.csv')
+    return PathConfig(args.meta_csv, args.video_dir, features_csv)
+
+
+def load_videos(config: PathConfig):
+    videos = [Video(video_id, path=get_video_path(config.video_dir, video_id)) for video_id in
+              read_video_ids(config.meta_csv_path)]
+    copy_existing_features(videos, config.features_csv)
+    return videos
 
 
 def parse_arguments():

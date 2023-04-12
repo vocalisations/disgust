@@ -5,17 +5,17 @@ import pandas as pd
 from tqdm import tqdm
 
 from classify_video_with_videomae import infer
-from utils import Video, load_videos, parse_arguments
+from utils import Video, load_videos, parse_arguments, get_path_config_from_args
 
 
 def main():
-    args = parse_arguments()
-    videos, features_csv = load_videos(args)
+    config = get_path_config_from_args()
+    videos = load_videos(config)
 
     check_video_files(videos)
     videos_with_paths = [v for v in videos if v.path is not None]
     videos_to_encode = [v for v in videos_with_paths if not v.has_features()]
-    save_encode(videos_to_encode, videos, features_csv)
+    save_encode(videos_to_encode, videos, config.features_csv)
 
 
 def save_encode(videos_to_encode, videos, features_csv):
