@@ -7,6 +7,10 @@ from typing import Optional, List
 
 import numpy as np
 import pandas as pd
+from IPython.core.display_functions import display
+from krippendorff import krippendorff
+from sklearn.metrics import f1_score, recall_score, precision_score, accuracy_score
+from pandas import DataFrame as df
 
 
 @dataclass
@@ -95,3 +99,38 @@ def copy_existing_features(videos: List[Video], features_csv: Path):
 
 def get_matching_video(existing_videos: List[Video], video_id: str):
     return next((existing_video for existing_video in existing_videos if existing_video.id == video_id), None)
+
+
+def display_performance_metrics(trues, predicted, class_list):
+    class_metrics, general_metrics = calculate_performance_metrics(trues, predicted, class_list)
+    display(class_metrics.round(2))
+    display(general_metrics.round(2))
+
+
+def print_performance_metrics(trues, predicted, class_list):
+    class_metrics, general_metrics = calculate_performance_metrics(trues, predicted, class_list)
+    print(class_metrics.round(2))
+    print(general_metrics.round(2))
+
+
+def calculate_performance_metrics(trues, predicted, class_list):
+    """
+    Calculates some performance metrics given a list of ground truth values and a list of predictions to be compared.
+    :param trues: list of ground truths
+    :param predicted: list of model predictions
+    :param class_list: the set of all possible labels
+    :return: a dataframe with class level metrics and a dataframe with general metrics
+    """
+    class_metrics_data = {'recall': recall_score(trues, predicted, average=None),
+                          'precision': precision_score(trues, predicted, average=None),
+                          'f1': f1_score(trues, predicted, average=None)}
+    class_metrics = df(class_metrics_data, index=class_list)
+
+    i_trues = [list(class_list).index(label) for label in trues]
+    i_predicted = [list(class_list).index(label) for label in predicted]
+    i_set = np.unique(i_trues + i_predicted)
+    general_metrics_data = [accuracy_score(trues, predicted),
+                            krippendorff.alpha(reliability_data=[i_trues, i_predicted],
+                                               level_of_measurement='nominal', value_domain=i_set)]
+    general_metrics = df(general_metrics_data, index=['accuracy', 'krippendorff alpha'], columns=['score'])
+    return class_metrics, general_metrics
