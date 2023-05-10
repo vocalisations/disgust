@@ -1,5 +1,4 @@
 import json
-import pickle
 from pathlib import Path
 from typing import List
 
@@ -8,7 +7,7 @@ import pandas as pd
 from tqdm import tqdm
 
 from classify_video_with_videomae import infer
-from utils import Video, load_videos, parse_arguments, get_path_config_from_args
+from utils import Video, load_videos, get_path_config_from_args
 
 
 def main():
