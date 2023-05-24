@@ -57,17 +57,23 @@ def plot_histogram(data: list[float],
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Process video files in a specified folder.')
     parser.add_argument('folder_path', type=Path, help='Path to the folder containing the video files.')
-    parser.add_argument('--output_figure_path', type=Path, help='Path to which to write a plot to.')
     args = parser.parse_args()
-    output_figure_path = args.output_figure_path if args.output_figure_path else args.folder_path / '_durations.png'
     folder_path = args.folder_path
-    return folder_path, output_figure_path
+    return folder_path
 
 
 def main():
-    folder_path, output_figure_path = parse_arguments()
+    folder_path = parse_arguments()
     durations = get_video_durations(folder_path)
-    plot_histogram(durations, output_figure_path=output_figure_path)
+
+    parameter_sets = [
+        (None, 200),
+        (10, 20),
+        (50, 50)
+    ]
+    for max_value, num_bins in tqdm(parameter_sets, desc='Making plots'):
+        plot_histogram(durations, output_figure_path=(folder_path / f'_durations_{max_value}_{num_bins}.png'),
+                       max_value=max_value, num_bins=num_bins)
 
 
 if __name__ == '__main__':
