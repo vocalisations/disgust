@@ -1,7 +1,6 @@
 import argparse
 import os
 import sys
-import time
 from pathlib import Path
 from typing import Tuple
 
@@ -25,6 +24,7 @@ def parse_arguments() -> Tuple[Path, Path]:
 
 
 def deface_folder(source_folder_path: Path, target_folder_path: Path):
+    """Deface all videos in a folder (not including sub folders)."""
     if not source_folder_path.exists():
         raise SystemExit(f"Error: Invalid argument '{source_folder_path}' - must be a valid file path.")
     os.makedirs(target_folder_path, exist_ok=True)
