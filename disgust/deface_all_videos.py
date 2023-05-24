@@ -1,6 +1,7 @@
 import argparse
 import os
 import sys
+import time
 from pathlib import Path
 from typing import Tuple
 
@@ -28,28 +29,32 @@ def deface_folder(source_folder_path: Path, target_folder_path: Path):
         raise SystemExit(f"Error: Invalid argument '{source_folder_path}' - must be a valid file path.")
     os.makedirs(target_folder_path, exist_ok=True)
     video_file_extensions = ['.avi', '.mp4']
-    source_file_paths = [p for p in source_folder_path.glob("*") if p.is_file() and p.suffix in video_file_extensions and '_an']
-    for source_file_path in tqdm(source_file_paths, desc='Defacing videos'):
+    source_file_paths = [p for p in source_folder_path.glob("*") if
+                         p.is_file() and p.suffix in video_file_extensions and '_an']
+    for source_file_path in tqdm(source_file_paths, desc='Defacing videos', leave=True, position=0):
         target_file_path = target_folder_path / source_file_path.name
-        deface_video(source_file_path, target_file_path)
+        if not target_file_path.exists():
+            deface_video(source_file_path, target_file_path)
 
 
 def deface_video(input_file, output_file):
     """Call defacing tool to blur faces using default values."""
+    temp_file = output_file.parent / ('_temp_' + output_file.name)
     deface.video_detect(str(input_file),
-                        str(output_file),
+                        str(temp_file),
                         centerface=CenterFace(),
                         threshold=0.2,
                         enable_preview=None,
                         cam=None,
-                        nested=None,
-                        replacewith=None,
+                        nested=True,
+                        replacewith='blur',
                         mask_scale=1.3,
-                        ellipse=None,
+                        ellipse=True,
                         draw_scores=None,
                         ffmpeg_config={"codec": "libx264"},
                         replaceimg=None,
                         keep_audio=True, )
+    os.rename(temp_file, output_file)
 
 
 def main():
