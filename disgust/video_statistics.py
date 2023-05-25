@@ -1,13 +1,11 @@
-from typing import Optional
-
-import matplotlib.pyplot as plt
-import numpy as np
+import argparse
 import os
 from pathlib import Path
+from typing import Optional
 
 import cv2 as cv
-import argparse
-
+import matplotlib.pyplot as plt
+import numpy as np
 from tqdm import tqdm
 
 
@@ -37,6 +35,7 @@ def plot_histogram(data: list[float],
                    output_figure_path: Optional[Path] = None,
                    ):
     """Plots a histogram of a list of video durations."""
+    plt.figure()
     min_value = min(data)
     max_value = max_value if max_value else max(data)
     bin_width = (max_value - min_value) / num_bins
