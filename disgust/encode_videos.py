@@ -6,8 +6,8 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-from classify_video_with_videomae import infer
-from utils import Video, load_videos, get_path_config_from_args
+from disgust.classify_video import infer
+from disgust.utils import Video, load_videos, get_path_config_from_args
 
 
 def main():
@@ -17,14 +17,14 @@ def main():
     videos_with_paths = [v for v in videos if v.path is not None]
     videos_to_encode = [v for v in videos_with_paths if not v.has_features()]
     check_video_files(videos_to_encode)
-    save_encode(videos_to_encode, videos, config.features_csv)
+    save_encode(videos_to_encode, videos, config.features_csv, config.model_type)
 
 
-def save_encode(videos_to_encode, videos, features_csv):
+def save_encode(videos_to_encode, videos, features_csv, model):
     failed_videos = []
     for video in tqdm(videos_to_encode):
         try:
-            _, logits = infer(str(video.path))
+            _, logits = infer(str(video.path), model=model, return_logits=True, return_classifications=False)
         except Exception as e:
             video.error = str(e)
             failed_videos.append(video)

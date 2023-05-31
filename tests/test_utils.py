@@ -1,6 +1,6 @@
 import pytest
 
-from utils import read_feature_set
+from disgust.utils import read_feature_set
 import numpy as np
 
 

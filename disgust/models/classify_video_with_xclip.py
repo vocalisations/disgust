@@ -7,23 +7,15 @@ import imutils
 import numpy as np
 import pandas as pd
 import torch
-from pytorchvideo.transforms import (
-    Normalize,
-    UniformTemporalSubsample,
-)
 from torchvision.io.video import av
-from torchvision.transforms import (
-    Compose,
-    Lambda,
-    Resize,
-)
-from transformers import VideoMAEFeatureExtractor, VideoMAEForVideoClassification, AutoModel, AutoProcessor
+from transformers import AutoModel, AutoProcessor
 
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('video_path', type=Path, help='Path to the video file.')
     return parser.parse_args()
+
 
 
 def parse_video(video_file):
@@ -64,9 +56,6 @@ def parse_video(video_file):
             break
 
     return frames
-
-
-
 
 
 def read_video_pyav(container: av.container.input.InputContainer, indices: List[int]):
@@ -111,7 +100,7 @@ def infer(video_file: str, return_classifications=False, return_logits=True):
     inputs = processor(videos=list(video), return_tensors="pt")
 
     if return_logits:
-        video_features = model.get_video_features(**inputs)
+        video_features = model.get_video_features(**inputs).detach()
         print(video_features.shape)
     else:
         video_features = []
@@ -142,7 +131,7 @@ def classify(classes, model, processor, video):
         outputs = model(**inputs)
     logits_per_video = outputs.logits_per_video  # this is the video-text similarity score
     probs = logits_per_video.softmax(dim=1)  # we can take the softmax to get the label probabilities
-    return probs
+    return [(label, float(prob)) for label, prob in zip(classes, probs.tolist()[0])]
 
 
 def main():

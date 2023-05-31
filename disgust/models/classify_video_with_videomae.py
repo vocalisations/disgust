@@ -100,7 +100,7 @@ def preprocess_video(frames: list, device: str, model, model_weights_tag):
     return video_tensor_pp.to(device)
 
 
-def infer(video_file:str):
+def infer(video_file: str, return_classifications=False, return_logits=True):
     model_ckpt = "MCG-NJU/videomae-base-finetuned-kinetics"
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = VideoMAEForVideoClassification.from_pretrained(model_ckpt).to(device)
@@ -114,6 +114,7 @@ def infer(video_file:str):
     with torch.no_grad():
         outputs = model(**inputs)
         logits = outputs.logits
+
     softmax_scores = torch.nn.functional.softmax(logits, dim=-1).squeeze(0)
     confidences = [(labels[i], float(softmax_scores[i])) for i in range(len(labels))]
     return confidences, logits
