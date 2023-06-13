@@ -58,7 +58,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('meta_csv', type=Path, help='Path to the csv file containing a column called VideoID.')
     parser.add_argument('video_dir', type=Path, help='Path to folder containing the video files.')
-    parser.add_argument('model', type=str, help=f'model type; choose from {available_models.keys}.')
+    parser.add_argument('model', type=str, help=f'model type; choose from {list(available_models.keys())}.')
     parser.add_argument('--features_csv', type=Path, help='Path to the csv file containing a column called VideoID.')
     return parser.parse_args()
 
