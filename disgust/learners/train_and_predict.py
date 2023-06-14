@@ -56,7 +56,3 @@ def train_and_predict_using_grid_search_rf(X_train, X_validation, y_train):
     return predicted
 
 
-available_learners = {'xgboost':train_and_predict_using_xgboost,
-                      'rf':train_and_predict_using_simple_default_rf,
-                      'grid_search_rf':train_and_predict_using_grid_search_rf,
-                      }
