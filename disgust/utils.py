@@ -12,6 +12,8 @@ from krippendorff import krippendorff
 from sklearn.metrics import f1_score, recall_score, precision_score, accuracy_score
 from pandas import DataFrame as df
 
+from disgust.learners import available_learners
+from disgust.learners.available_learners import available_learners
 from disgust.models.available_models import available_models
 
 
@@ -26,39 +28,27 @@ class Video:
         return isinstance(self.features, np.ndarray)
 
 
-@dataclass
-class PathConfig:
-    meta_csv_path: Path
-    video_dir: Path
-    features_csv: Path
-    model_type: str
-
-
-def get_path_config_from_args() -> PathConfig:
-    args = parse_arguments()
-
-    model = args.model
+def get_features_csv_path(model: str, meta_csv: Path):
     if model not in available_models:
         raise ValueError(f'Invalid model "{model}" selected; choose from {available_models.keys()}')
-
-    features_csv = args.features_csv if args.features_csv else \
-        args.meta_csv.parent / f"{args.meta_csv.stem}_{model}_logits.csv"
-
-    return PathConfig(args.meta_csv, args.video_dir, features_csv, model)
+    features_csv = meta_csv.parent / f"{meta_csv.stem}_{model}_logits.csv"
+    return features_csv
 
 
-def load_videos(config: PathConfig):
-    videos = [Video(video_id, path=get_video_path(config.video_dir, video_id)) for video_id in
-              read_video_ids(config.meta_csv_path)]
-    copy_existing_features(videos, config.features_csv)
+def load_videos(meta_csv_path, model_type, video_dir):
+    features_csv = get_features_csv_path(model_type, meta_csv_path)
+    videos = [Video(video_id, path=get_video_path(video_dir, video_id)) for video_id in
+              read_video_ids(meta_csv_path)]
+    copy_existing_features(videos, features_csv)
     return videos
 
 
-def parse_arguments():
+def parse_arguments(requested=['meta_csv']):
     parser = argparse.ArgumentParser()
     parser.add_argument('meta_csv', type=Path, help='Path to the csv file containing a column called VideoID.')
     parser.add_argument('video_dir', type=Path, help='Path to folder containing the video files.')
     parser.add_argument('model', type=str, help=f'model type; choose from {list(available_models.keys())}.')
+    parser.add_argument('learner_type', type=str, help=f'model type; choose from {list(available_learners.keys())}.')
     parser.add_argument('--features_csv', type=Path, help='Path to the csv file containing a column called VideoID.')
     return parser.parse_args()
 

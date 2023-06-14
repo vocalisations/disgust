@@ -7,17 +7,23 @@ import pandas as pd
 from tqdm import tqdm
 
 from disgust.classify_video import infer
-from disgust.utils import Video, load_videos, get_path_config_from_args
+from disgust.utils import Video, load_videos, parse_arguments, \
+    get_features_csv_path
 
 
 def main():
-    config = get_path_config_from_args()
-    videos = load_videos(config)
+    args = parse_arguments()
+    model_type = args.model
+    video_dir = args.video_dir
+    meta_csv_path = args.meta_csv
+    features_csv = get_features_csv_path(model_type, meta_csv_path)
+
+    videos = load_videos(meta_csv_path, model_type, video_dir)
 
     videos_with_paths = [v for v in videos if v.path is not None]
     videos_to_encode = [v for v in videos_with_paths if not v.has_features()]
     check_video_files(videos_to_encode)
-    save_encode(videos_to_encode, videos, config.features_csv, config.model_type)
+    save_encode(videos_to_encode, videos, features_csv, model_type)
 
 
 def save_encode(videos_to_encode, videos, features_csv, model):

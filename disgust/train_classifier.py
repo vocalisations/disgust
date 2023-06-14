@@ -1,21 +1,29 @@
 import random
 
 import numpy as np
+import pandas as pd
 from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split
 
-from disgust.classifiers.train_and_predict import train_and_predict_using_xgboost, available_learners
-from utils import load_videos, get_path_config_from_args, print_performance_metrics
-import pandas as pd
+from disgust.learners.available_learners import available_learners
+from disgust.utils import parse_arguments
+from utils import load_videos, print_performance_metrics
 
 
 def main():
-    config = get_path_config_from_args()
-    videos = load_videos(config)
+    args = parse_arguments()
+    model = args.model
+    video_dir = args.video_dir
+    meta_csv_path = args.meta_csv
+    learner_type = args.learner_type
+
+    videos = load_videos(meta_csv_path, model, video_dir)
+
     videos_with_features = [v for v in videos if v.has_features()]
+
     print(f'Loaded {len(videos_with_features)} videos with features out of a total of {len(videos)} videos.')
 
-    metadata = pd.read_csv(config.meta_csv_path)
+    metadata = pd.read_csv(meta_csv_path)
     ids = [v.id for v in videos_with_features]
 
 
@@ -31,7 +39,7 @@ def main():
 
     random.seed(0)
 
-    predicted = train_and_predict(X_train, X_validation, y_train, learner_type='xgboost')
+    predicted = train_and_predict(X_train, X_validation, y_train, learner_type=learner_type)
 
     print_performance_metrics(trues=y_validation, predicted=predicted, class_list=y_train.unique())
     print(confusion_matrix(y_validation, predicted), 'true pathogen disgust:', len([p for p in predicted if p == 'pathogen disgust']))
@@ -48,12 +56,12 @@ def split_dataset(X, y):
 
 
 def train_and_predict(X_train, X_validation, y_train, learner_type:str):
-
+    print(f'Training and predicting using {learner_type}.')
 
     if learner_type not in available_learners:
         raise ValueError(f'Invalid learner type "{learner_type}" selected. Choose from {available_learners.keys()}')
 
-    return available_learners[learner_type]
+    return available_learners[learner_type](X_train, X_validation, y_train)
 
 
 if __name__ == '__main__':
