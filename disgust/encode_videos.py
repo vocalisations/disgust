@@ -12,10 +12,7 @@ from disgust.utils import Video, load_videos, parse_arguments, \
 
 
 def main():
-    args = parse_arguments()
-    model_type = args.model
-    video_dir = args.video_dir
-    meta_csv_path = args.meta_csv
+    meta_csv_path, video_dir, model_type = parse_arguments(requested_args=['meta_csv', 'video_dir', 'model'])
     features_csv = get_features_csv_path(model_type, meta_csv_path)
 
     videos = load_videos(meta_csv_path, model_type, video_dir)

@@ -11,11 +11,8 @@ from utils import load_videos, print_performance_metrics
 
 
 def main():
-    args = parse_arguments()
-    model = args.model
-    video_dir = args.video_dir
-    meta_csv_path = args.meta_csv
-    learner_type = args.learner_type
+    meta_csv_path, video_dir, model, learner_type = parse_arguments(
+        requested_args=['meta_csv', 'video_dir', 'model', 'learner_type'])
 
     videos = load_videos(meta_csv_path, model, video_dir)
 
@@ -25,7 +22,6 @@ def main():
 
     metadata = pd.read_csv(meta_csv_path)
     ids = [v.id for v in videos_with_features]
-
 
     X = np.stack([v.features for v in videos_with_features])
 
@@ -42,7 +38,8 @@ def main():
     predicted = train_and_predict(X_train, X_validation, y_train, learner_type=learner_type)
 
     print_performance_metrics(trues=y_validation, predicted=predicted, class_list=y_train.unique())
-    print(confusion_matrix(y_validation, predicted), 'true pathogen disgust:', len([p for p in predicted if p == 'pathogen disgust']))
+    print(confusion_matrix(y_validation, predicted), 'true pathogen disgust:',
+          len([p for p in predicted if p == 'pathogen disgust']))
 
 
 def split_dataset(X, y):
@@ -55,7 +52,7 @@ def split_dataset(X, y):
     return X_train, X_validation, y_train, y_validation, X_test, y_test
 
 
-def train_and_predict(X_train, X_validation, y_train, learner_type:str):
+def train_and_predict(X_train, X_validation, y_train, learner_type: str):
     print(f'Training and predicting using {learner_type}.')
 
     if learner_type not in available_learners:

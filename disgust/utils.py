@@ -30,7 +30,7 @@ class Video:
 
 def get_features_csv_path(model: str, meta_csv: Path):
     if model not in available_models:
-        raise ValueError(f'Invalid model "{model}" selected; choose from {available_models.keys()}')
+        raise ValueError(f'Invalid model "{model}" selected; choose from {list(available_models.keys())}')
     features_csv = meta_csv.parent / f"{meta_csv.stem}_{model}_logits.csv"
     return features_csv
 
@@ -43,14 +43,20 @@ def load_videos(meta_csv_path, model_type, video_dir):
     return videos
 
 
-def parse_arguments(requested=['meta_csv']):
+def parse_arguments(requested_args):
+    """Parse only the requested arguments from the command line."""
     parser = argparse.ArgumentParser()
-    parser.add_argument('meta_csv', type=Path, help='Path to the csv file containing a column called VideoID.')
-    parser.add_argument('video_dir', type=Path, help='Path to folder containing the video files.')
-    parser.add_argument('model', type=str, help=f'model type; choose from {list(available_models.keys())}.')
-    parser.add_argument('learner_type', type=str, help=f'model type; choose from {list(available_learners.keys())}.')
-    parser.add_argument('--features_csv', type=Path, help='Path to the csv file containing a column called VideoID.')
-    return parser.parse_args()
+    available_args = {
+        'meta_csv': {'type': Path, 'help': 'Path to the csv file containing a column called VideoID.'},
+        'video_dir': {'type': Path, 'help': 'Path to folder containing the video files.'},
+        'model': {'type': str, 'help': f'model type; choose from {list(available_models.keys())}.'},
+        'learner_type': {'type': str, 'help': f'model type; choose from {list(available_learners.keys())}.'},
+    }
+
+    for requested_arg in requested_args:
+        parser.add_argument(requested_arg, **available_args[requested_arg])
+    args = parser.parse_args()
+    return [getattr(args, r) for r in requested_args]
 
 
 def read_video_ids(meta_csv_path: Path):
