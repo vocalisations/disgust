@@ -35,11 +35,12 @@ def main():
 
     random.seed(0)
 
-    predicted = train_and_predict(X_train, X_validation, y_train, learner_type=learner_type)
+    predicted, probs = train_and_predict(X_train, X_validation, y_train, learner_type=learner_type)
 
-    print_performance_metrics(trues=y_validation, predicted=predicted, class_list=y_train.unique())
+    print_performance_metrics(trues=y_validation, predicted=predicted, probs=probs, class_list=y_train.unique())
     print(confusion_matrix(y_validation, predicted), 'true pathogen disgust:',
           len([p for p in predicted if p == 'pathogen disgust']))
+
 
 
 def split_dataset(X, y):

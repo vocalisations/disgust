@@ -8,7 +8,8 @@ def train_and_predict_using_simple_default_rf(X_train, X_validation, y_train):
     clf = RandomForestClassifier(n_estimators=n_trees)
     clf.fit(X_train, y_train)
     predicted = clf.predict(X_validation)
-    return predicted
+    probs = clf.predict_proba(X_validation)[:, 1]
+    return predicted, probs
 
 
 def train_and_predict_using_xgboost(X_train, X_validation, y_train):
@@ -19,7 +20,8 @@ def train_and_predict_using_xgboost(X_train, X_validation, y_train):
     clf.fit(X_train, y_train_xgboost)
 
     predicted = clf.predict(X_validation)
-    return ['moral disgust' if v == 0 else 'pathogen disgust' for v in predicted]
+    probs = clf.predict_proba(X_validation)[:, 1]
+    return ['moral disgust' if v == 0 else 'pathogen disgust' for v in predicted], probs
 
 
 def train_and_predict_using_grid_search_rf(X_train, X_validation, y_train):
@@ -53,6 +55,7 @@ def train_and_predict_using_grid_search_rf(X_train, X_validation, y_train):
 
     # And then use this classifier for your prediction
     predicted = clf_best.predict(X_validation)
-    return predicted
+    probs = clf.predict_proba(X_validation)[:, 1]
+    return predicted, probs
 
 
