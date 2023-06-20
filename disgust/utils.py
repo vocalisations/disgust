@@ -147,3 +147,5 @@ def calculate_performance_metrics(trues, predicted, probs, class_list):
                                                level_of_measurement='nominal', value_domain=i_set)]
     general_metrics = df(general_metrics_data, index=['auc', 'accuracy', 'krippendorff alpha'], columns=['score'])
     return class_metrics, general_metrics, roc
+
+

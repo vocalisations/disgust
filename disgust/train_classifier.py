@@ -2,15 +2,18 @@ import random
 
 import numpy as np
 import pandas as pd
+from pretty_confusion_matrix import pp_matrix
 from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split
 
+from disgust import disgust_classes
+from disgust.classify_video import get_feature_names
 from disgust.learners.available_learners import available_learners
 from disgust.utils import parse_arguments
 from utils import load_videos, print_performance_metrics
 
 
-def main():
+def main(use_pretty_confusion_matrix=False):
     meta_csv_path, video_dir, model, learner_type = parse_arguments(
         requested_args=['meta_csv', 'video_dir', 'model', 'learner_type'])
 
@@ -20,12 +23,11 @@ def main():
 
     print(f'Loaded {len(videos_with_features)} videos with features out of a total of {len(videos)} videos.')
 
-    metadata = pd.read_csv(meta_csv_path)
-    ids = [v.id for v in videos_with_features]
 
     X = np.stack([v.features for v in videos_with_features])
 
-    # metadata.set_index('VideoID')
+    ids = [v.id for v in videos_with_features]
+    metadata = pd.read_csv(meta_csv_path)
     filtered_metadata = metadata[metadata['VideoID'].isin(ids)]
     sorted_metadata = filtered_metadata.sort_values(by=['VideoID'],
                                                     key=lambda x: pd.Categorical(x, categories=ids, ordered=True))
@@ -33,14 +35,34 @@ def main():
 
     X_train, X_validation, y_train, y_validation, X_test, y_test = split_dataset(X, y)
 
-    random.seed(0)
+    predicted_classes, probabilities, feature_importances = train_and_predict(X_train, X_validation, y_train, learner_type=learner_type)
+    evaluate(predicted_classes,
+             probabilities,
+             feature_importances,
+             use_pretty_confusion_matrix,
+             y_train,
+             y_validation,
+             get_feature_names(model))
 
-    predicted, probs = train_and_predict(X_train, X_validation, y_train, learner_type=learner_type)
 
-    print_performance_metrics(trues=y_validation, predicted=predicted, probs=probs, class_list=y_train.unique())
-    print(confusion_matrix(y_validation, predicted), 'true pathogen disgust:',
-          len([p for p in predicted if p == 'pathogen disgust']))
-
+def evaluate(predicted_classes, probabilities, feature_importances, use_pretty_confusion_matrix, y_train, y_validation,
+             feature_names):
+    feature_importances = pd.DataFrame(feature_importances, index=feature_names,
+                                       columns=['importance']).sort_values(
+        'importance', ascending=False)
+    feature_importances['cumulative'] = feature_importances['importance'].cumsum()
+    print(feature_importances[:30])
+    print_performance_metrics(trues=y_validation, predicted=predicted_classes, probs=probabilities,
+                              class_list=y_train.unique())
+    conf_matrix = confusion_matrix(y_validation, predicted_classes)
+    print(conf_matrix, 'true pathogen disgust:',
+          len([p for p in predicted_classes if p == 'pathogen disgust']))
+    # get pandas dataframe
+    df_cm = pd.DataFrame(conf_matrix, index=(disgust_classes.class_names), columns=(disgust_classes.class_names))
+    # colormap: see this and choose your more dear
+    cmap = None
+    if use_pretty_confusion_matrix:
+        pp_matrix(df_cm, cmap=cmap, fmt='.1f', fz=11, figsize=[4, 4])
 
 
 def split_dataset(X, y):

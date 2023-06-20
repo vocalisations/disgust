@@ -101,9 +101,7 @@ def preprocess_video(frames: list, device: str, model, model_weights_tag):
 
 
 def infer(video_file: str, return_classifications=False, return_logits=True):
-    model_ckpt = "MCG-NJU/videomae-base-finetuned-kinetics"
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = VideoMAEForVideoClassification.from_pretrained(model_ckpt).to(device)
+    device, model, model_ckpt = init_model()
     labels = list(model.config.label2id.keys())
 
     frames = parse_video(video_file)
@@ -119,6 +117,20 @@ def infer(video_file: str, return_classifications=False, return_logits=True):
     confidences = [(labels[i], float(softmax_scores[i])) for i in range(len(labels))]
     return confidences, logits
 
+
+def init_model():
+    model_ckpt = "MCG-NJU/videomae-base-finetuned-kinetics"
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = VideoMAEForVideoClassification.from_pretrained(model_ckpt).to(device)
+    return device, model, model_ckpt
+
+
+
+
+
+def get_feature_names():
+    _, model, _ = init_model()
+    return list(model.config.label2id.keys())
 
 def main():
     args = parse_arguments()

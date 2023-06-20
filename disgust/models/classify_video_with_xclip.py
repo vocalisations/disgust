@@ -113,6 +113,11 @@ def infer(video_file: str, return_classifications=False, return_logits=True):
 
     return probs, video_features
 
+def get_feature_names():
+    """Get the names of the features.
+
+     For xclip, the features don't have meaningful names, so returns a list of numbers instead."""
+    return list(range(512))
 
 def classify(classes, model, processor, video):
     inputs = processor(

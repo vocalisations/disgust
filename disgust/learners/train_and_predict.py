@@ -10,26 +10,32 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
+from disgust import disgust_classes
+from disgust.disgust_classes import class_name_to_class_id, class_id_to_class_name
+
 
 def train_and_predict_using_rf(X_train, X_validation, y_train):
-    best_params = {'bootstrap': False, 'max_depth': 10, 'min_samples_leaf': 2, 'min_samples_split': 10, 'n_estimators': 100}
+    best_params = {'bootstrap': False, 'max_depth': 10, 'min_samples_leaf': 2, 'min_samples_split': 10,
+                   'n_estimators': 100}
     clf = RandomForestClassifier(**best_params)
     clf.fit(X_train, y_train)
     predicted = clf.predict(X_validation)
     probs = clf.predict_proba(X_validation)[:, 1]
-    return predicted, probs
+
+    return predicted, probs, clf.feature_importances_
 
 
 def train_and_predict_using_xgboost(X_train, X_validation, y_train):
     n_trees = 200
     clf = xgb.XGBClassifier(n_estimators=n_trees)
 
-    y_train_xgboost = [0 if v == 'moral disgust' else 1 for v in y_train]
+    y_train_xgboost = [class_name_to_class_id(class_name) for class_name in y_train]
     clf.fit(X_train, y_train_xgboost)
 
     predicted = clf.predict(X_validation)
     probs = clf.predict_proba(X_validation)[:, 1]
-    return ['moral disgust' if v == 0 else 'pathogen disgust' for v in predicted], probs
+
+    return [class_id_to_class_name(class_id) for class_id in predicted], probs, clf.feature_importances_
 
 
 BOOST_ROUNDS = 50000  # we use early stopping so make this arbitrarily high
@@ -74,6 +80,7 @@ def cv_over_param_dict(X_train, y_train, param_dict, kfolds, verbose=False, desc
     best_params = results_df.iloc[0]['param_dict']
     return best_params, results_df
 
+
 def train_and_predict_using_grid_search_xgboost(X_train, X_validation, y_train):
     """Tune hyperparameters for xgboost.
 
@@ -102,7 +109,8 @@ def train_and_predict_using_grid_search_xgboost(X_train, X_validation, y_train):
     # merge into full param dicts
     full_search_dicts = [{**current_params, **d} for d in grid_search_dicts]
     # cv and get best params
-    current_params, results_df = cv_over_param_dict(X_train, y_train_xgboost, full_search_dicts, kfolds, description='Tune depth')
+    current_params, results_df = cv_over_param_dict(X_train, y_train_xgboost, full_search_dicts, kfolds,
+                                                    description='Tune depth')
 
     # round 2: tune subsample, colsample_bytree, colsample_bylevel
     subsamples = np.linspace(0.25, 0.75, 5)
@@ -114,7 +122,8 @@ def train_and_predict_using_grid_search_xgboost(X_train, X_validation, y_train):
     # merge into full param dicts
     full_search_dicts = [{**current_params, **d} for d in grid_search_dicts]
     # cv and get best params
-    current_params, results_df = cv_over_param_dict(X_train, y_train_xgboost, full_search_dicts, kfolds, description='Tune subsample, colsample_bytree, colsample_bylevel')
+    current_params, results_df = cv_over_param_dict(X_train, y_train_xgboost, full_search_dicts, kfolds,
+                                                    description='Tune subsample, colsample_bytree, colsample_bylevel')
 
     # round 3: learning rate
     learning_rates = np.logspace(-3, -1, 5)
@@ -122,10 +131,10 @@ def train_and_predict_using_grid_search_xgboost(X_train, X_validation, y_train):
     # merge into full param dicts
     full_search_dicts = [{**current_params, **d} for d in grid_search_dicts]
     # cv and get best params
-    current_params, results_df = cv_over_param_dict(X_train, y_train_xgboost, full_search_dicts, kfolds, description='Tune learning rate')
+    current_params, results_df = cv_over_param_dict(X_train, y_train_xgboost, full_search_dicts, kfolds,
+                                                    description='Tune learning rate')
 
     print("Best parameters: ", current_params)
-
 
     clf = xgb.XGBClassifier(**current_params)
 
@@ -135,6 +144,7 @@ def train_and_predict_using_grid_search_xgboost(X_train, X_validation, y_train):
     predicted = clf.predict(X_validation)
     probs = clf.predict_proba(X_validation)[:, 1]
     return ['moral disgust' if v == 0 else 'pathogen disgust' for v in predicted], probs
+
 
 # def train_and_predict_using_grid_search_xgboost(X_train, X_validation, y_train):
 #     param_grid = {
