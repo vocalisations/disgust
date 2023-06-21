@@ -1,16 +1,16 @@
 from datetime import datetime
 from itertools import product
 
+import numpy as np
+import pandas as pd
 import xgboost as xgb
 from IPython.core.display_functions import display
+from pycaret.classification import setup, compare_models, tune_model, automl
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import make_scorer, f1_score
 from sklearn.model_selection import GridSearchCV, cross_val_score
-import numpy as np
-import pandas as pd
 from tqdm import tqdm
 
-from disgust import disgust_classes
 from disgust.disgust_classes import class_name_to_class_id, class_id_to_class_name
 
 
@@ -37,6 +37,16 @@ def train_and_predict_using_xgboost(X_train, X_validation, y_train):
 
     return [class_id_to_class_name(class_id) for class_id in predicted], probs, clf.feature_importances_
 
+def train_and_predict_using_pycaret(X_train, X_validation, y_train):
+    data = pd.DataFrame(np.column_stack((X_train, y_train)), columns=list(range(X_train.shape[1]))+['disgust type'])
+    pycaret_setup = setup(data, target='disgust type', session_id=123, log_experiment=True, experiment_name='disgust type')
+    print(f'{pycaret_setup=}')
+    best_model = compare_models()
+    # tune_model(best_model)  # Couldn't improve
+    # clf = automl()
+    predicted = best_model.predict(X_validation)
+    probs = best_model.predict_proba(X_validation)[:, 1]
+    return [class_id_to_class_name(class_id) for class_id in predicted], probs, best_model.feature_importances_
 
 BOOST_ROUNDS = 50000  # we use early stopping so make this arbitrarily high
 RANDOMSTATE = 42
