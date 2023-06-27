@@ -13,7 +13,7 @@ from disgust.utils import parse_arguments
 from utils import load_videos, print_performance_metrics
 
 
-def main(use_pretty_confusion_matrix=False):
+def main(use_pretty_confusion_matrix=True):
     meta_csv_path, video_dir, model, learner_type = parse_arguments(
         requested_args=['meta_csv', 'video_dir', 'model', 'learner_type'])
 
@@ -22,7 +22,6 @@ def main(use_pretty_confusion_matrix=False):
     videos_with_features = [v for v in videos if v.has_features()]
 
     print(f'Loaded {len(videos_with_features)} videos with features out of a total of {len(videos)} videos.')
-
 
     X = np.stack([v.features for v in videos_with_features])
 
@@ -35,7 +34,8 @@ def main(use_pretty_confusion_matrix=False):
 
     X_train, X_validation, y_train, y_validation, X_test, y_test = split_dataset(X, y)
 
-    predicted_classes, probabilities, feature_importances = train_and_predict(X_train, X_validation, y_train, learner_type=learner_type)
+    predicted_classes, probabilities, feature_importances = train_and_predict(X_train, X_validation, y_train,
+                                                                              learner_type=learner_type)
     evaluate(predicted_classes,
              probabilities,
              feature_importances,
@@ -60,7 +60,7 @@ def evaluate(predicted_classes, probabilities, feature_importances, use_pretty_c
     # get pandas dataframe
     df_cm = pd.DataFrame(conf_matrix, index=(disgust_classes.class_names), columns=(disgust_classes.class_names))
     # colormap: see this and choose your more dear
-    cmap = None
+    cmap = 'PuRd'
     if use_pretty_confusion_matrix:
         pp_matrix(df_cm, cmap=cmap, fmt='.1f', fz=11, figsize=[4, 4])
 
