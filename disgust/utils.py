@@ -36,10 +36,13 @@ def get_features_csv_path(model: str, meta_csv: Path):
 
 
 def load_videos(meta_csv_path, model_type, video_dir):
-    features_csv = get_features_csv_path(model_type, meta_csv_path)
     videos = [Video(video_id, path=get_video_path(video_dir, video_id)) for video_id in
               read_video_ids(meta_csv_path)]
-    copy_existing_features(videos, features_csv)
+
+    model_types = available_models.keys() if model_type == 'all' else [model_type]
+    for current_model_type in model_types:
+        features_csv = get_features_csv_path(current_model_type, meta_csv_path)
+        copy_existing_features(videos, features_csv, current_model_type)
     return videos
 
 
@@ -49,7 +52,7 @@ def parse_arguments(requested_args):
     available_args = {
         'meta_csv': {'type': Path, 'help': 'Path to the csv file containing a column called VideoID.'},
         'video_dir': {'type': Path, 'help': 'Path to folder containing the video files.'},
-        'model': {'type': str, 'help': f'model type; choose from {list(available_models.keys())}.'},
+        'model': {'type': str, 'help': f'model type; choose from {list(available_models.keys()) + ["all"]}.'},
         'learner_type': {'type': str, 'help': f'model type; choose from {list(available_learners.keys())}.'},
     }
 
@@ -86,7 +89,7 @@ def read_feature_set(text: str):
     return obj
 
 
-def copy_existing_features(videos: List[Video], features_csv: Path):
+def copy_existing_features(videos: List[Video], features_csv: Path, model_type:str):
     existing_videos = [Video(str(t['VideoID']), features=read_feature_set(t['features'])) for _index, t in
                        pd.read_csv(features_csv).iterrows()] if features_csv.exists() else {}
 
@@ -94,13 +97,16 @@ def copy_existing_features(videos: List[Video], features_csv: Path):
     for video in videos:
         existing_video = get_matching_video(existing_videos, video.id)
         if existing_video is not None and existing_video.has_features():
-            video.features = existing_video.features
+            if video.has_features():
+                video.features = np.concatenate((video.features, existing_video.features))
+            else:
+                video.features = existing_video.features
             recovered_videos.append(video)
 
     if recovered_videos:
-        print(f'Loaded previously computed features for {len(recovered_videos)} videos.')
+        print(f'Loaded previously computed features of type "{model_type}" for {len(recovered_videos)} videos.')
     else:
-        print(f'Found no previously computed features.')
+        print(f'Found no previously computed features of type "{model_type}".')
 
 
 def get_matching_video(existing_videos: List[Video], video_id: str):
@@ -139,7 +145,7 @@ def calculate_performance_metrics(trues, predicted, probs, class_list):
 
     from sklearn.metrics import roc_auc_score, roc_curve
     fpr, tpr, thresholds = roc_curve(y_true=trues, y_score=probs, pos_label='pathogen disgust')
-    roc = df({'fpr':fpr, 'tpr':tpr})
+    roc = df({'fpr': fpr, 'tpr': tpr})
 
     general_metrics_data = [(roc_auc_score(trues, probs)),
                             accuracy_score(trues, predicted),
@@ -147,5 +153,3 @@ def calculate_performance_metrics(trues, predicted, probs, class_list):
                                                level_of_measurement='nominal', value_domain=i_set)]
     general_metrics = df(general_metrics_data, index=['auc', 'accuracy', 'krippendorff alpha'], columns=['score'])
     return class_metrics, general_metrics, roc
-
-

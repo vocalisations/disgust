@@ -1,3 +1,4 @@
+from itertools import chain
 from typing import List
 
 from disgust.models.available_models import available_models
@@ -17,7 +18,8 @@ def infer(video_file: str, return_classifications=False, return_logits=True, mod
 
 def get_feature_names(model) -> List[str]:
     """Get a list of the names of the features that the model outputs."""
-    return get_model(model).get_feature_names()
+    models = available_models.keys() if model == "all" else [model]
+    return chain.from_iterable([get_model(model).get_feature_names() for model in models])
 
 
 def get_model(model):
