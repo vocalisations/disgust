@@ -60,13 +60,13 @@ def evaluate(predicted_classes, probabilities, feature_importances, use_pretty_c
     # get pandas dataframe
     df_cm = pd.DataFrame(conf_matrix, index=(disgust_classes.class_names), columns=(disgust_classes.class_names))
     # colormap: see this and choose your more dear
-    cmap = 'PuRd'
+    cmap = "copper"
     if use_pretty_confusion_matrix:
         pp_matrix(df_cm, cmap=cmap, fmt='.1f', fz=11, figsize=[4, 4])
 
 
 def split_dataset(X, y):
-    X_train, X_rest, y_train, y_rest = train_test_split(X, y, test_size=0.33, random_state=0, shuffle=True)
+    X_train, X_rest, y_train, y_rest = train_test_split(X, y, test_size=0.33, random_state=0, shuffle=False)
     X_validation, X_test, y_validation, y_test = train_test_split(X_rest, y_rest, test_size=0.50, random_state=0, shuffle=True)
     print(f'Split {len(y)} samples into the following sets:')
     print(f'Train set {len(y_train)}')
