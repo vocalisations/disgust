@@ -89,7 +89,7 @@ def read_feature_set(text: str):
     return obj
 
 
-def copy_existing_features(videos: List[Video], features_csv: Path, model_type:str):
+def copy_existing_features(videos: List[Video], features_csv: Path, model_type: str):
     existing_videos = [Video(str(t['VideoID']), features=read_feature_set(t['features'])) for _index, t in
                        pd.read_csv(features_csv).iterrows()] if features_csv.exists() else {}
 
@@ -113,16 +113,22 @@ def get_matching_video(existing_videos: List[Video], video_id: str):
     return next((existing_video for existing_video in existing_videos if existing_video.id == video_id), None)
 
 
-def display_performance_metrics(trues, predicted, class_list):
-    class_metrics, general_metrics, roc = calculate_performance_metrics(trues, predicted, class_list)
-    display(class_metrics.round(2))
-    display(general_metrics.round(2))
+def display_performance_metrics(trues, predicted, probs, class_list):
+    class_metrics, general_metrics, roc, conf_matrix = calculate_performance_metrics(trues, predicted, probs,
+                                                                                     class_list)
+    for table in [class_metrics, general_metrics]:
+        display(table.style.background_gradient(vmin=0, vmax=1, cmap='Greys_r').set_precision(2))
+    if roc is not None:
+        display_performance_metrics(roc)
+    display(conf_matrix.style.background_gradient(vmin=0, vmax=conf_matrix.sum().sum(), cmap='Greys_r').set_precision(2).format(lambda c: f'{c} ({100 * c / conf_matrix.sum().sum():.0f}%)').set_caption('Confusion matrix'))
 
 
 def print_performance_metrics(trues, predicted, probs, class_list):
     class_metrics, general_metrics, roc = calculate_performance_metrics(trues, predicted, probs, class_list)
     print(class_metrics.round(2))
     print(general_metrics.round(2))
+    if roc is not None:
+        display_performance_metrics(roc)
 
 
 def calculate_performance_metrics(trues, predicted, probs, class_list):
@@ -143,11 +149,16 @@ def calculate_performance_metrics(trues, predicted, probs, class_list):
     i_predicted = [list(class_list).index(label) for label in predicted]
     i_set = np.unique(i_trues + i_predicted)
 
-    from sklearn.metrics import roc_auc_score, roc_curve
-    fpr, tpr, thresholds = roc_curve(y_true=trues, y_score=probs, pos_label='pathogen disgust')
-    roc = df({'fpr': fpr, 'tpr': tpr})
+    if probs:
+        from sklearn.metrics import roc_auc_score, roc_curve
+        fpr, tpr, thresholds = roc_curve(y_true=trues, y_score=probs, pos_label='pathogen disgust')
+        roc = df({'fpr': fpr, 'tpr': tpr})
+        roc_auc = (roc_auc_score(trues, probs))
+    else:
+        roc = None
+        roc_auc = None
 
-    general_metrics_data = [(roc_auc_score(trues, probs)),
+    general_metrics_data = [roc_auc,
                             accuracy_score(trues, predicted),
                             krippendorff.alpha(reliability_data=[i_trues, i_predicted],
                                                level_of_measurement='nominal', value_domain=i_set)]

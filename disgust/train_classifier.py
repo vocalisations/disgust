@@ -13,9 +13,7 @@ from disgust.utils import parse_arguments
 from utils import load_videos, print_performance_metrics
 
 
-def main(use_pretty_confusion_matrix=True):
-    meta_csv_path, video_dir, model, learner_type = parse_arguments(
-        requested_args=['meta_csv', 'video_dir', 'model', 'learner_type'])
+def main(meta_csv_path, video_dir, model, learner_type, use_pretty_confusion_matrix=True):
 
     videos = load_videos(meta_csv_path, model, video_dir)
 
@@ -85,4 +83,6 @@ def train_and_predict(X_train, X_validation, y_train, learner_type: str):
 
 
 if __name__ == '__main__':
-    main()
+    args = parse_arguments(
+        requested_args=['meta_csv', 'video_dir', 'model', 'learner_type'])
+    main(*args)

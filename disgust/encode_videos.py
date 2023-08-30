@@ -33,7 +33,7 @@ def save_encode(videos_to_encode, videos, features_csv, model):
             failed_videos.append(video)
             continue
 
-        video.features = np.array(logits[0])  # Remove batch dimension
+        video.features = np.array(logits[0].cpu())  # Remove batch dimension
         save_features(videos, features_csv)
 
     report_failures(failed_videos)
