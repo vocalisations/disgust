@@ -127,8 +127,8 @@ def print_performance_metrics(trues, predicted, probs, class_list):
     class_metrics, general_metrics, roc, conf_matrix = calculate_performance_metrics(trues, predicted, probs, class_list)
     print(class_metrics.round(2))
     print(general_metrics.round(2))
-    if roc is not None:
-        print(roc)
+    # if roc is not None:
+        #print(roc)
     print(conf_matrix)
 
 
