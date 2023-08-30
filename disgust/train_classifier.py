@@ -45,11 +45,12 @@ def main(meta_csv_path, video_dir, model, learner_type, use_pretty_confusion_mat
 
 def evaluate(predicted_classes, probabilities, feature_importances, use_pretty_confusion_matrix, y_train, y_validation,
              feature_names):
-    feature_importances = pd.DataFrame(feature_importances, index=feature_names,
-                                       columns=['importance']).sort_values(
-        'importance', ascending=False)
-    feature_importances['cumulative'] = feature_importances['importance'].cumsum()
-    print(feature_importances[:30])
+    if len(feature_importances) == len(feature_names):
+        feature_importances = pd.DataFrame(feature_importances, index=feature_names,
+                                           columns=['importance']).sort_values(
+            'importance', ascending=False)
+        feature_importances['cumulative'] = feature_importances['importance'].cumsum()
+        print(feature_importances[:30])
     print_performance_metrics(trues=y_validation, predicted=predicted_classes, probs=probabilities,
                               class_list=y_train.unique())
     conf_matrix = confusion_matrix(y_validation, predicted_classes)

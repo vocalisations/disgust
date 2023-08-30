@@ -19,7 +19,7 @@ def infer(video_file: str, return_classifications=False, return_logits=True, mod
 def get_feature_names(model) -> List[str]:
     """Get a list of the names of the features that the model outputs."""
     models = available_models.keys() if model == "all" else [model]
-    return chain.from_iterable([get_model(model).get_feature_names() for model in models])
+    return list(chain.from_iterable([get_model(model).get_feature_names() for model in models]))
 
 
 def get_model(model):
