@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from IPython.core.display_functions import display
 from krippendorff import krippendorff
-from sklearn.metrics import f1_score, recall_score, precision_score, accuracy_score
+from sklearn.metrics import f1_score, recall_score, precision_score, accuracy_score, confusion_matrix
 from pandas import DataFrame as df
 
 from disgust.learners import available_learners
@@ -119,16 +119,17 @@ def display_performance_metrics(trues, predicted, probs, class_list):
     for table in [class_metrics, general_metrics]:
         display(table.style.background_gradient(vmin=0, vmax=1, cmap='Greys_r').set_precision(2))
     if roc is not None:
-        display_performance_metrics(roc)
+        display(roc)
     display(conf_matrix.style.background_gradient(vmin=0, vmax=conf_matrix.sum().sum(), cmap='Greys_r').set_precision(2).format(lambda c: f'{c} ({100 * c / conf_matrix.sum().sum():.0f}%)').set_caption('Confusion matrix'))
 
 
 def print_performance_metrics(trues, predicted, probs, class_list):
-    class_metrics, general_metrics, roc = calculate_performance_metrics(trues, predicted, probs, class_list)
+    class_metrics, general_metrics, roc, conf_matrix = calculate_performance_metrics(trues, predicted, probs, class_list)
     print(class_metrics.round(2))
     print(general_metrics.round(2))
     if roc is not None:
-        display_performance_metrics(roc)
+        print(roc)
+    print(conf_matrix)
 
 
 def calculate_performance_metrics(trues, predicted, probs, class_list):
@@ -149,7 +150,7 @@ def calculate_performance_metrics(trues, predicted, probs, class_list):
     i_predicted = [list(class_list).index(label) for label in predicted]
     i_set = np.unique(i_trues + i_predicted)
 
-    if probs:
+    if probs is not None:
         from sklearn.metrics import roc_auc_score, roc_curve
         fpr, tpr, thresholds = roc_curve(y_true=trues, y_score=probs, pos_label='pathogen disgust')
         roc = df({'fpr': fpr, 'tpr': tpr})
@@ -163,4 +164,9 @@ def calculate_performance_metrics(trues, predicted, probs, class_list):
                             krippendorff.alpha(reliability_data=[i_trues, i_predicted],
                                                level_of_measurement='nominal', value_domain=i_set)]
     general_metrics = df(general_metrics_data, index=['auc', 'accuracy', 'krippendorff alpha'], columns=['score'])
-    return class_metrics, general_metrics, roc
+
+    conf_matrix = pd.DataFrame(confusion_matrix(trues, predicted),
+                               index=pd.MultiIndex.from_product([['True:'], class_list]),
+                               columns=pd.MultiIndex.from_product([['Predicted:'], class_list]))
+
+    return class_metrics, general_metrics[general_metrics['score'].notna()], roc, conf_matrix

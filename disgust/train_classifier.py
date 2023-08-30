@@ -53,8 +53,6 @@ def evaluate(predicted_classes, probabilities, feature_importances, use_pretty_c
     print_performance_metrics(trues=y_validation, predicted=predicted_classes, probs=probabilities,
                               class_list=y_train.unique())
     conf_matrix = confusion_matrix(y_validation, predicted_classes)
-    print(conf_matrix, 'true pathogen disgust:',
-          len([p for p in predicted_classes if p == 'pathogen disgust']))
     # get pandas dataframe
     df_cm = pd.DataFrame(conf_matrix, index=(disgust_classes.class_names), columns=(disgust_classes.class_names))
     # colormap: see this and choose your more dear
