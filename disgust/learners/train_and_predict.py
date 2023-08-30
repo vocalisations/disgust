@@ -6,6 +6,7 @@ import pandas as pd
 import xgboost as xgb
 from IPython.core.display_functions import display
 from pycaret.classification import setup, compare_models, tune_model, automl
+from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import make_scorer, f1_score
 from sklearn.model_selection import GridSearchCV, cross_val_score
@@ -36,6 +37,15 @@ def train_and_predict_using_xgboost(X_train, X_validation, y_train):
     probs = clf.predict_proba(X_validation)[:, 1]
 
     return [class_id_to_class_name(class_id) for class_id in predicted], probs, clf.feature_importances_
+
+def train_and_predict_using_pca_and_xgboost(X_train, X_validation, y_train):
+    pca = PCA()
+    pca = pca.fit(X_train)
+    top_n_components = 250
+    X_train_pc = pca.transform(X_train)[:, :top_n_components]
+    X_validation_pc = pca.transform(X_validation)[:, :top_n_components]
+
+    return train_and_predict_using_xgboost(X_train_pc, X_validation_pc, y_train)
 
 def train_and_predict_using_pycaret(X_train, X_validation, y_train):
     data = pd.DataFrame(np.column_stack((X_train, y_train)), columns=list(range(X_train.shape[1]))+['disgust type'])
