@@ -9,13 +9,15 @@ import numpy as np
 import pandas as pd
 from IPython.core.display_functions import display
 from krippendorff import krippendorff
+from pandas.io.formats.style import Styler
 from sklearn.metrics import f1_score, recall_score, precision_score, accuracy_score, confusion_matrix
-from pandas import DataFrame as df
+from pandas import DataFrame as df, DataFrame
 
 from disgust.learners import available_learners
 from disgust.learners.available_learners import available_learners
 from disgust.models.available_models import available_models
 from matplotlib import pyplot as plt
+
 
 @dataclass
 class Video:
@@ -130,11 +132,7 @@ def save_performance_metrics(trues, predicted, probs, class_list, folder: Path):
     class_metrics, general_metrics, roc, conf_matrix = calculate_performance_metrics(trues, predicted, probs,
                                                                                      class_list)
 
-    class_metrics_f, general_metrics_f, conf_matrix_f = format_tables(class_metrics, general_metrics, roc, conf_matrix)
-
-    class_metrics_f.to_html(folder / 'class_metrics.html')
-    general_metrics_f.to_html(folder / 'general_metrics.html')
-    conf_matrix_f.to_html(folder / 'conf_matrix.html')
+    class_metrics_f, general_metrics_f, conf_matrix_f = format_tables(class_metrics, general_metrics, conf_matrix)
 
     if roc is not None:
         roc_auc = general_metrics.loc['auc', 'score']
@@ -146,10 +144,16 @@ def save_performance_metrics(trues, predicted, probs, class_list, folder: Path):
         plt.ylim([0, 1])
         plt.ylabel('True Positive Rate')
         plt.xlabel('False Positive Rate')
-        plt.savefig(folder / 'roc.pdf')
+        plt.savefig(folder / 'roc.svg')
+
+    doc = f'<div>{general_metrics_f.to_html()}</div><div>{conf_matrix_f.to_html()}</div>' \
+          f'<div>{class_metrics_f.to_html()}</div><div><img src = "roc.svg" /></div>'
+    with open(folder / 'performance_metrics.html', 'w') as f:
+        f.write(doc)
 
 
-def format_tables(class_metrics, general_metrics, roc, conf_matrix):
+
+def format_tables(class_metrics: DataFrame, general_metrics: DataFrame, conf_matrix: DataFrame) -> tuple[Styler]:
     formatted_class_metrics, formatted_general_metrics = [
         table.style.background_gradient(vmin=0, vmax=1, cmap='Greys_r').set_precision(2) for table in
         [class_metrics, general_metrics]]

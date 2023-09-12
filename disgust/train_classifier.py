@@ -1,4 +1,6 @@
+import os
 import random
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -10,11 +12,10 @@ from disgust import disgust_classes
 from disgust.classify_video import get_feature_names
 from disgust.learners.available_learners import available_learners
 from disgust.utils import parse_arguments
-from utils import load_videos, print_performance_metrics
+from utils import load_videos, print_performance_metrics, save_performance_metrics
 
 
 def main(meta_csv_path, video_dir, model, learner_type, use_pretty_confusion_matrix=True):
-
     videos = load_videos(meta_csv_path, model, video_dir)
 
     videos_with_features = [v for v in videos if v.has_features()]
@@ -34,17 +35,19 @@ def main(meta_csv_path, video_dir, model, learner_type, use_pretty_confusion_mat
 
     predicted_classes, probabilities, feature_importances = train_and_predict(X_train, X_validation, y_train,
                                                                               learner_type=learner_type)
+    output_folder = meta_csv_path.parent / f'{model}_{learner_type}_output'
+    os.makedirs(output_folder, exist_ok=True)
     evaluate(predicted_classes,
              probabilities,
              feature_importances,
-             use_pretty_confusion_matrix,
              y_train,
              y_validation,
-             get_feature_names(model))
+             get_feature_names(model),
+             output_folder=output_folder)
 
 
-def evaluate(predicted_classes, probabilities, feature_importances, use_pretty_confusion_matrix, y_train, y_validation,
-             feature_names):
+def evaluate(predicted_classes, probabilities, feature_importances, y_train, y_validation,
+             feature_names, output_folder):
     if len(feature_importances) == len(feature_names):
         feature_importances = pd.DataFrame(feature_importances, index=feature_names,
                                            columns=['importance']).sort_values(
@@ -53,13 +56,8 @@ def evaluate(predicted_classes, probabilities, feature_importances, use_pretty_c
         print(feature_importances[:30])
     print_performance_metrics(trues=y_validation, predicted=predicted_classes, probs=probabilities,
                               class_list=y_train.unique())
-    conf_matrix = confusion_matrix(y_validation, predicted_classes)
-    # get pandas dataframe
-    df_cm = pd.DataFrame(conf_matrix, index=(disgust_classes.class_names), columns=(disgust_classes.class_names))
-    # colormap: see this and choose your more dear
-    cmap = "copper"
-    if use_pretty_confusion_matrix:
-        pp_matrix(df_cm, cmap=cmap, fmt='.1f', fz=11, figsize=[4, 4])
+    save_performance_metrics(trues=y_validation, predicted=predicted_classes, probs=probabilities,
+                             class_list=y_train.unique(), folder=output_folder)
 
 
 def split_dataset(X, y):
