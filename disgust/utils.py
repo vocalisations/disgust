@@ -15,7 +15,7 @@ from pandas import DataFrame as df
 from disgust.learners import available_learners
 from disgust.learners.available_learners import available_learners
 from disgust.models.available_models import available_models
-
+from matplotlib import pyplot as plt
 
 @dataclass
 class Video:
@@ -116,19 +116,57 @@ def get_matching_video(existing_videos: List[Video], video_id: str):
 def display_performance_metrics(trues, predicted, probs, class_list):
     class_metrics, general_metrics, roc, conf_matrix = calculate_performance_metrics(trues, predicted, probs,
                                                                                      class_list)
-    for table in [class_metrics, general_metrics]:
-        display(table.style.background_gradient(vmin=0, vmax=1, cmap='Greys_r').set_precision(2))
+
+    formatted_tables = format_tables(class_metrics, general_metrics, conf_matrix)
+
+    for table in formatted_tables:
+        display(table)
+
     if roc is not None:
         display(roc)
-    display(conf_matrix.style.background_gradient(vmin=0, vmax=conf_matrix.sum().sum(), cmap='Greys_r').set_precision(2).format(lambda c: f'{c} ({100 * c / conf_matrix.sum().sum():.0f}%)').set_caption('Confusion matrix'))
+
+
+def save_performance_metrics(trues, predicted, probs, class_list, folder: Path):
+    class_metrics, general_metrics, roc, conf_matrix = calculate_performance_metrics(trues, predicted, probs,
+                                                                                     class_list)
+
+    class_metrics_f, general_metrics_f, conf_matrix_f = format_tables(class_metrics, general_metrics, roc, conf_matrix)
+
+    class_metrics_f.to_html(folder / 'class_metrics.html')
+    general_metrics_f.to_html(folder / 'general_metrics.html')
+    conf_matrix_f.to_html(folder / 'conf_matrix.html')
+
+    if roc is not None:
+        roc_auc = general_metrics.loc['auc', 'score']
+        plt.title('Receiver Operating Characteristic')
+        plt.plot(roc['fpr'], roc['tpr'], 'b', label='AUC = %0.2f' % roc_auc)
+        plt.legend(loc='lower right')
+        plt.plot([0, 1], [0, 1], 'r--')
+        plt.xlim([0, 1])
+        plt.ylim([0, 1])
+        plt.ylabel('True Positive Rate')
+        plt.xlabel('False Positive Rate')
+        plt.savefig(folder / 'roc.pdf')
+
+
+def format_tables(class_metrics, general_metrics, roc, conf_matrix):
+    formatted_class_metrics, formatted_general_metrics = [
+        table.style.background_gradient(vmin=0, vmax=1, cmap='Greys_r').set_precision(2) for table in
+        [class_metrics, general_metrics]]
+    formatted_conf_matrix = conf_matrix.style.background_gradient(vmin=0, vmax=conf_matrix.sum().sum(),
+                                                                  cmap='Greys_r').set_precision(
+        2).format(lambda c: f'{c} ({100 * c / conf_matrix.sum().sum():.0f}%)')
+
+    return formatted_class_metrics, formatted_general_metrics, formatted_conf_matrix
 
 
 def print_performance_metrics(trues, predicted, probs, class_list):
-    class_metrics, general_metrics, roc, conf_matrix = calculate_performance_metrics(trues, predicted, probs, class_list)
+    class_metrics, general_metrics, roc, conf_matrix = calculate_performance_metrics(trues, predicted, probs,
+                                                                                     class_list)
     print(class_metrics.round(2))
     print(general_metrics.round(2))
     # if roc is not None:
-        #print(roc)
+    # print(roc)
     print(conf_matrix)
 
 
