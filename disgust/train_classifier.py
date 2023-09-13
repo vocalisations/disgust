@@ -62,7 +62,7 @@ def evaluate(predicted_classes, probabilities, feature_importances, y_train, y_v
 
 def split_dataset(X, y):
     X_train, X_rest, y_train, y_rest = train_test_split(X, y, test_size=0.33, random_state=0, shuffle=False)
-    X_validation, X_test, y_validation, y_test = train_test_split(X_rest, y_rest, test_size=0.50, random_state=0, shuffle=True)
+    X_validation, X_test, y_validation, y_test = train_test_split(X_rest, y_rest, test_size=0.50, random_state=0, shuffle=False)
     print(f'Split {len(y)} samples into the following sets:')
     print(f'Train set {len(y_train)}')
     print(f'Validation set {len(y_validation)}')
