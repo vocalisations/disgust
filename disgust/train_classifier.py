@@ -12,7 +12,8 @@ from disgust import disgust_classes
 from disgust.classify_video import get_feature_names
 from disgust.learners.available_learners import available_learners
 from disgust.utils import parse_arguments
-from utils import load_videos, print_performance_metrics, save_performance_metrics
+from utils import load_videos
+from disgust.classification_performance_metrics import save_performance_metrics, print_performance_metrics
 
 
 def main(meta_csv_path, video_dir, model, learner_type, use_pretty_confusion_matrix=True):

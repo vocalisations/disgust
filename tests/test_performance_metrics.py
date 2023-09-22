@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from disgust.utils import save_performance_metrics
+from disgust.classification_performance_metrics import save_performance_metrics
 
 
 def test_save_performance_metrics(tmpdir):
