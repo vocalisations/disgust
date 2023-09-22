@@ -11,7 +11,7 @@ from sklearn.model_selection import train_test_split
 from disgust import disgust_classes
 from disgust.classify_video import get_feature_names
 from disgust.learners.available_learners import available_learners
-from disgust.utils import parse_arguments
+from disgust.utils import parse_arguments, create_split_videos_masks
 from utils import load_videos
 from disgust.classification_performance_metrics import save_performance_metrics, print_performance_metrics
 
@@ -28,11 +28,10 @@ def main(meta_csv_path, video_dir, model, learner_type, use_pretty_confusion_mat
     ids = [v.id for v in videos_with_features]
     metadata = pd.read_csv(meta_csv_path)
     filtered_metadata = metadata[metadata['VideoID'].isin(ids)]
-    sorted_metadata = filtered_metadata.sort_values(by=['VideoID'],
-                                                    key=lambda x: pd.Categorical(x, categories=ids, ordered=True))
-    y = sorted_metadata['Disgust category']
+    y = filtered_metadata['Disgust category'].to_numpy()
 
-    X_train, X_validation, y_train, y_validation, X_test, y_test = split_dataset(X, y)
+    X_train, X_validation, y_train, y_validation, X_test, y_test = split_dataset(X, y,
+                                                                                 [v.link for v in videos_with_features])
 
     predicted_classes, probabilities, feature_importances = train_and_predict(X_train, X_validation, y_train,
                                                                               learner_type=learner_type)
@@ -56,14 +55,21 @@ def evaluate(predicted_classes, probabilities, feature_importances, y_train, y_v
         feature_importances['cumulative'] = feature_importances['importance'].cumsum()
         print(feature_importances[:30])
     print_performance_metrics(trues=y_validation, predicted=predicted_classes, probs=probabilities,
-                              class_list=y_train.unique())
+                              class_list=list(set(y_train)))
     save_performance_metrics(trues=y_validation, predicted=predicted_classes, probs=probabilities,
-                             class_list=y_train.unique(), folder=output_folder)
+                             class_list=list(set(y_train)), folder=output_folder)
 
 
-def split_dataset(X, y):
-    X_train, X_rest, y_train, y_rest = train_test_split(X, y, test_size=0.33, random_state=0, shuffle=False)
-    X_validation, X_test, y_validation, y_test = train_test_split(X_rest, y_rest, test_size=0.50, random_state=0, shuffle=False)
+def split_dataset(X, y, links):
+    train_indices, validation_indices, test_indices = create_split_videos_masks(links)
+
+    def get_split(X, y, mask):
+        return X[mask], y[mask]
+
+    X_train, y_train = get_split(X, y, train_indices)
+    X_validation, y_validation = get_split(X, y, validation_indices)
+    X_test, y_test = get_split(X, y, test_indices)
+
     print(f'Split {len(y)} samples into the following sets:')
     print(f'Train set {len(y_train)}')
     print(f'Validation set {len(y_validation)}')

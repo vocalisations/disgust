@@ -1,5 +1,6 @@
 import argparse
 import json
+import re
 from dataclasses import dataclass
 from json import JSONDecodeError
 from pathlib import Path
@@ -19,6 +20,7 @@ class Video:
     path: Optional[Path] = None
     features: Optional[np.ndarray] = None
     error: Optional[str] = None
+    link: Optional[str] = None
 
     def has_features(self) -> bool:
         return isinstance(self.features, np.ndarray)
@@ -32,8 +34,8 @@ def get_features_csv_path(model: str, meta_csv: Path):
 
 
 def load_videos(meta_csv_path, model_type, video_dir):
-    videos = [Video(video_id, path=get_video_path(video_dir, video_id)) for video_id in
-              read_video_ids(meta_csv_path)]
+    videos = [Video(video_id, path=get_video_path(video_dir, video_id), link=video_link) for video_id, video_link in
+              read_video_ids_and_links(meta_csv_path)]
 
     model_types = available_models.keys() if model_type == 'all' else [model_type]
     for current_model_type in model_types:
@@ -58,8 +60,9 @@ def parse_arguments(requested_args):
     return [getattr(args, r) for r in requested_args]
 
 
-def read_video_ids(meta_csv_path: Path):
-    return pd.read_csv(meta_csv_path)['VideoID'].astype(str)
+def read_video_ids_and_links(meta_csv_path: Path):
+    csv = pd.read_csv(meta_csv_path)
+    return zip(csv['VideoID'].astype(str), csv['Link'].astype(str))
 
 
 def get_video_path(video_dir: Path, video_id: str) -> Optional[Video]:
@@ -109,4 +112,44 @@ def get_matching_video(existing_videos: List[Video], video_id: str):
     return next((existing_video for existing_video in existing_videos if existing_video.id == video_id), None)
 
 
+def create_split_videos_masks(links, r_train=0.67, r_validation=0.16):
+    """Clusters links by their id with counts and then divides the links over 3 splits, train, validation and test as
+    close the given ratios as possible, making sure that only complete clusters are assigned to each split."""
+    # Create clusters
+    clusters = {}
+    for i_link, link in enumerate(links):
+        clusters.setdefault(get_id_from_video_link(link), []).append(i_link)
 
+    # Sort clusters by size
+    sorted_clusters = sorted(clusters.values(), key=len, reverse=True)
+
+    total_count = len(links)
+    train_count, validation_count = int(r_train * total_count), int(r_validation * total_count)
+
+    train_indices, validation_indices, test_indices = [], [], []
+    for cluster in sorted_clusters:
+        if len(train_indices) + len(cluster) <= train_count:
+            train_indices.extend(cluster)
+        elif len(validation_indices) + len(cluster) <= validation_count:
+            validation_indices.extend(cluster)
+        else:
+            test_indices.extend(cluster)
+
+    return train_indices, validation_indices, test_indices
+
+
+def get_id_from_video_link(video_link):
+    if 'vm.tiktok.com' in video_link:
+        match = re.search(r'https://vm\.tiktok\.com/(.+?)/', video_link)
+        if match:
+            return 'tt' + match.group(1)
+
+    if 'youtube.com' in video_link:
+        match = re.search(r'v=([^&]+)', video_link)
+        if match:
+            return 'yt' + match.group(1)
+
+    if 'youtu.be' in video_link:
+        match = re.search(r'https://youtu\.be/([^/]+)', video_link)
+        if match:
+            return 'yt' + match.group(1)
