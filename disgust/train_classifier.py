@@ -26,9 +26,7 @@ def main(meta_csv_path, video_dir, model, learner_type, use_pretty_confusion_mat
     X = np.stack([v.features for v in videos_with_features])
 
     ids = [v.id for v in videos_with_features]
-    metadata = pd.read_csv(meta_csv_path)
-    filtered_metadata = metadata[metadata['VideoID'].isin(ids)]
-    y = filtered_metadata['Disgust category'].to_numpy()
+    y = load_labels(ids, meta_csv_path)
 
     X_train, X_validation, y_train, y_validation, X_test, y_test = split_dataset(X, y,
                                                                                  [v.link for v in videos_with_features])
@@ -44,6 +42,21 @@ def main(meta_csv_path, video_dir, model, learner_type, use_pretty_confusion_mat
              y_validation,
              get_feature_names(model),
              output_folder=output_folder)
+
+
+def load_labels(ids, meta_csv_path):
+    metadata = pd.read_csv(meta_csv_path)
+    filtered_metadata = metadata[metadata['VideoID'].isin(ids)]
+    possible_label_columns = [
+        'Disgust category',
+        'Context category (pathogen disgust or moral disgust). Only look at the objective situation. Whether a given vocalisation fits your own idea what (pathogen/moral) disgust sounds like is irrelevant.',
+    ]
+    for label_column in possible_label_columns:
+        if label_column in filtered_metadata:
+            print(f'Using column "{label_column}" for labels in file "{meta_csv_path}."')
+            y = filtered_metadata[label_column].to_numpy()
+            return y
+    raise Exception(f'Did not find label column in "{meta_csv_path}. Expected column names: {possible_label_columns}')
 
 
 def evaluate(predicted_classes, probabilities, feature_importances, y_train, y_validation,
