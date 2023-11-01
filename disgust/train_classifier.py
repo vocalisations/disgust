@@ -33,7 +33,7 @@ def main(meta_csv_path, video_dir, model, learner_type, use_pretty_confusion_mat
 
     predicted_classes, probabilities, feature_importances = train_and_predict(X_train, X_validation, y_train,
                                                                               learner_type=learner_type)
-    output_folder = meta_csv_path.parent / f'{model}_{learner_type}_output'
+    output_folder = meta_csv_path.parent / 'performance' / f'{model}_{learner_type}_output'
     os.makedirs(output_folder, exist_ok=True)
     evaluate(predicted_classes,
              probabilities,

@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 
 from IPython.core.display_functions import display
+from jinja2 import Environment, FileSystemLoader
 from krippendorff import krippendorff
 from matplotlib import pyplot as plt
 from pandas import DataFrame, DataFrame as df
@@ -30,6 +31,7 @@ def save_performance_metrics(trues, predicted, probs, class_list, folder: Path):
 
     class_metrics_f, general_metrics_f, conf_matrix_f = format_tables(class_metrics, general_metrics, conf_matrix)
 
+    roc_path = 'roc.svg'
     if roc is not None:
         roc_auc = general_metrics.loc['auc', 'score']
         plt.title('Receiver Operating Characteristic')
@@ -40,12 +42,26 @@ def save_performance_metrics(trues, predicted, probs, class_list, folder: Path):
         plt.ylim([0, 1])
         plt.ylabel('True Positive Rate')
         plt.xlabel('False Positive Rate')
-        plt.savefig(folder / 'roc.svg')
+        plt.savefig(folder / roc_path)
 
-    doc = f'<div>{general_metrics_f.to_html()}</div><div>{conf_matrix_f.to_html()}</div>' \
-          f'<div>{class_metrics_f.to_html()}</div><div><img src = "roc.svg" /></div>'
+    html_output = make_html(class_metrics_f, conf_matrix_f, general_metrics_f, roc_path)
     with open(folder / 'performance_metrics.html', 'w') as f:
-        f.write(doc)
+        f.write(html_output)
+    with open(folder / 'performance_metrics.csv', 'w') as f:
+        f.write(general_metrics.to_csv())
+
+
+def make_html(class_metrics_f, conf_matrix_f, general_metrics_f, roc_path):
+    env = Environment(loader=FileSystemLoader('disgust/templates'))
+    template = env.get_template('template.html')
+    data = {'cards': [
+        {'title': 'General metrics', 'content': general_metrics_f.to_html()},
+        {'title': 'Confusion matrix', 'content': conf_matrix_f.to_html()},
+        {'title': 'Class metrics', 'content': class_metrics_f.to_html()},
+        {'title': 'ROC', 'content': f'<img src="{roc_path}" />'}
+    ]}
+    html_output = template.render(data)
+    return html_output
 
 
 def format_tables(class_metrics: DataFrame, general_metrics: DataFrame, conf_matrix: DataFrame) -> tuple[Styler]:
@@ -54,7 +70,7 @@ def format_tables(class_metrics: DataFrame, general_metrics: DataFrame, conf_mat
         [class_metrics, general_metrics]]
     formatted_conf_matrix = conf_matrix.style.background_gradient(
         vmin=0, vmax=conf_matrix.sum().sum(), cmap='Greys_r').format(
-        lambda c: f'{c:.2f} ({100 * c / conf_matrix.sum().sum():.0f}%)')
+        lambda c: f'{c} ({100 * c / conf_matrix.sum().sum():.0f}%)')
 
     return formatted_class_metrics, formatted_general_metrics, formatted_conf_matrix
 
