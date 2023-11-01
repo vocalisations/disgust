@@ -7,7 +7,7 @@ authors:
     family-names: Meijer
     given-names: Christiaan
     orcid: "https://orcid.org/0000-0002-5529-5761"
-doi: https://zenodo.org/doi/10.5281/zenodo.10061021
+doi: 10.5281/zenodo.10061021
 version: "1.0.0"
 repository-code: "https://github.com/vocalisations/disgust"
 keywords:
