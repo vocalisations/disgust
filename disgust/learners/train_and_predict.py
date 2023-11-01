@@ -26,6 +26,11 @@ def train_and_predict_using_rf(X_train, X_validation, y_train):
     return predicted, probs, clf.feature_importances_
 
 
+def train_and_predict_using_pca_and_rf(X_train, X_validation, y_train):
+    X_train_pc, X_validation_pc = do_pca(X_train, X_validation)
+    return train_and_predict_using_rf(X_train_pc, X_validation_pc, y_train)
+
+
 def train_and_predict_using_xgboost(X_train, X_validation, y_train):
     n_trees = 200
     clf = xgb.XGBClassifier(n_estimators=n_trees)
@@ -38,18 +43,25 @@ def train_and_predict_using_xgboost(X_train, X_validation, y_train):
 
     return [class_id_to_class_name(class_id) for class_id in predicted], probs, clf.feature_importances_
 
+
 def train_and_predict_using_pca_and_xgboost(X_train, X_validation, y_train):
+    X_train_pc, X_validation_pc = do_pca(X_train, X_validation)
+    return train_and_predict_using_xgboost(X_train_pc, X_validation_pc, y_train)
+
+
+def do_pca(X_train, X_validation):
     pca = PCA()
     pca = pca.fit(X_train)
     top_n_components = 250
     X_train_pc = pca.transform(X_train)[:, :top_n_components]
     X_validation_pc = pca.transform(X_validation)[:, :top_n_components]
+    return X_train_pc, X_validation_pc
 
-    return train_and_predict_using_xgboost(X_train_pc, X_validation_pc, y_train)
 
 def train_and_predict_using_pycaret(X_train, X_validation, y_train):
-    data = pd.DataFrame(np.column_stack((X_train, y_train)), columns=list(range(X_train.shape[1]))+['disgust type'])
-    pycaret_setup = setup(data, target='disgust type', session_id=123, log_experiment=True, experiment_name='disgust type')
+    data = pd.DataFrame(np.column_stack((X_train, y_train)), columns=list(range(X_train.shape[1])) + ['disgust type'])
+    pycaret_setup = setup(data, target='disgust type', session_id=123, log_experiment=True,
+                          experiment_name='disgust type')
     print(f'{pycaret_setup=}')
     best_model = compare_models()
     # tune_model(best_model)  # Couldn't improve
@@ -57,6 +69,7 @@ def train_and_predict_using_pycaret(X_train, X_validation, y_train):
     predicted = best_model.predict(X_validation)
     probs = best_model.predict_proba(X_validation)[:, 1]
     return [class_id_to_class_name(class_id) for class_id in predicted], probs, best_model.feature_importances_
+
 
 BOOST_ROUNDS = 50000  # we use early stopping so make this arbitrarily high
 RANDOMSTATE = 42
