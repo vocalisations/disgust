@@ -1,0 +1,16 @@
+# YAML 1.2
+---
+cff-version: 1.2.0
+title: "Vocalisations of disgust video analysis"
+authors:
+  -
+    family-names: Meijer
+    given-names: Christiaan
+    orcid: "https://orcid.org/0000-0002-5529-5761"
+doi: ???
+version: "1.0.0"
+repository-code: "https://github.com/vocalisations/disgust"
+keywords:
+  - Video classification
+message: "If you use this software, please cite it using these metadata."
+license: Apache-2.0
