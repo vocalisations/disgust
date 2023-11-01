@@ -22,7 +22,16 @@ In the root of the folder, run:
 pip install .
 ```
 
-# Defacing
+# Inspect video durations (optional)
+We can create a plot of the duration of the videos by running:
+```
+python disgust/video_statistics.py ./Videos
+```
+A couple of plots will be saved in the videos folder.
+Example output:
+![_durations_10_20](https://github.com/vocalisations/disgust/assets/6087314/2392c44d-ca0a-4350-9982-ca1a7dd6c973)
+
+# Defacing (optional)
 To prevent our model from learning facial expressions and force it to learn on the context of the video, we deface all videos.
 
 ```shell
